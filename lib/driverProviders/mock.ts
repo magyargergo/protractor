@@ -4,11 +4,16 @@
  * server.
  */
 import {Session, WebDriver} from 'selenium-webdriver';
+import * as http from 'selenium-webdriver/http';
 
 import {Config} from '../config';
 import {DriverProvider} from './driverProvider';
 
-export class MockExecutor {
+export class MockExecutor extends http.Executor {
+  constructor(client?: http.HttpClient|Promise<http.HttpClient>) {
+    super(client);
+  }
+  
   execute(_: any): any {}
 }
 
