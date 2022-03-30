@@ -215,7 +215,7 @@ let initFn = async function(configFile: string, additionalConfig: Config) {
     }
   }
 
-  const createNextTaskRunner = async () => {
+  const createNextTaskRunner = async (): Promise<void> => {
     return new Promise(async (resolve) => {
       const task = scheduler.nextTask();
       if (task) {
@@ -227,7 +227,7 @@ let initFn = async function(configFile: string, additionalConfig: Config) {
           }
           taskResults_.add(result);
           task.done();
-          await createNextTaskRunner();
+          createNextTaskRunner();
           // If all tasks are finished
           if (scheduler.numTasksOutstanding() === 0) {
             resolve();
@@ -236,7 +236,7 @@ let initFn = async function(configFile: string, additionalConfig: Config) {
         } catch (err) {
           const errorCode = ErrorHandler.parseError(err);
           logger.error('Error:', (err as any).stack || err.message || err);
-          await cleanUpAndExit(errorCode ? errorCode : RUNNERS_FAILED_EXIT_CODE);
+          cleanUpAndExit(errorCode ? errorCode : RUNNERS_FAILED_EXIT_CODE);
         }
       } else {
         resolve();
@@ -244,11 +244,15 @@ let initFn = async function(configFile: string, additionalConfig: Config) {
     });
   };
 
+  const tasks: Array<Promise<void>> = [];
   const maxConcurrentTasks = scheduler.maxConcurrentTasks();
   for (let i = 0; i < maxConcurrentTasks; ++i) {
-    await createNextTaskRunner();
+    tasks.push(createNextTaskRunner());
   }
   logger.info('Running ' + scheduler.countActiveTasks() + ' instances of WebDriver');
+
+  // Resolved when all tasks are completed
+  await Promise.all(tasks);
 
   // By now all runners have completed.
   // Save results if desired
